@@ -4,7 +4,7 @@ import { COMPETENCIES, DOMAINS, SITUATIONS } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-001";
 
 function buildPrompt(raw: string) {
   return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   try {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
