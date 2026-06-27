@@ -4,7 +4,7 @@ import { COMPETENCIES, DOMAINS, SITUATIONS } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 function buildPrompt(raw: string) {
   return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
@@ -58,7 +58,8 @@ export async function POST(request: Request) {
 
     if (!r.ok) {
       const detail = await r.text();
-      return NextResponse.json({ error: "Model call failed", detail }, { status: 502 });
+      console.error("Gemini error:", r.status, detail);
+      return NextResponse.json({ error: `Model call failed (${r.status}): ${detail}` }, { status: 502 });
     }
 
     const data = await r.json();
