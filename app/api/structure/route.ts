@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { COMPETENCIES, DOMAINS, SITUATIONS } from "@/lib/types";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 export const runtime = "nodejs";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 function buildPrompt(raw: string) {
   return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
@@ -34,8 +32,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: "Server missing GEMINI_API_KEY" }, { status: 500 });
+  if (!process.env.GROQ_API_KEY) {
+    return NextResponse.json({ error: "Server missing GROQ_API_KEY" }, { status: 500 });
   }
 
   const { raw } = await request.json().catch(() => ({ raw: "" }));
@@ -44,10 +42,26 @@ export async function POST(request: Request) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: MODEL });
-    const result = await model.generateContent(buildPrompt(raw.trim()));
-    const text = result.response.text();
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: "user", content: buildPrompt(raw.trim()) }],
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!r.ok) {
+      const detail = await r.text();
+      return NextResponse.json({ error: `Model call failed (${r.status}): ${detail}` }, { status: 502 });
+    }
+
+    const data = await r.json();
+    const text = data.choices?.[0]?.message?.content || "";
 
     const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
     const start = clean.indexOf("{");
