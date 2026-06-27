@@ -6,33 +6,30 @@ export const runtime = "nodejs";
 const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 function buildPrompt(raw: string) {
-  return `You are an expert career coach helping a senior product manager document their work as reusable STAR stories for interviews, performance reviews, and portfolio use.
+  return `You are helping a product manager structure their work notes into a STAR format story for use in interviews and performance reviews.
 
-Your job: take a raw, unstructured note and extract ONE polished use case in strict JSON format.
+Convert the raw note below into a clean STAR story from a product management perspective. Only use information from the note — do not invent facts.
 
-Rules:
-- Write in first person ("I led...", "I identified...", "I partnered with...")
-- Be specific and concrete — use the details from the note, don't invent facts
-- Each STAR field must be 1-2 tight, punchy sentences — no padding
-- The title must lead with the RESULT or IMPACT, not the activity (e.g. "Unblocked Stakeholder Validation by Exposing Prod vs Dev Mismatch" not "Triaged Engineer Concerns")
-- The metric should be the single most quotable number or outcome — use exact figures if present, or a clear qualitative outcome if not
-- lesson and interview_angle should be genuinely insightful — what a senior PM would say in a debrief, not generic platitudes
+STAR format for product managers:
+- Situation: the business or product context (what problem existed, what was at stake, what the team/org landscape was)
+- Task: the PM's specific responsibility or ownership in this situation
+- Action: what the PM did — focus on product thinking, stakeholder alignment, decisions made, trade-offs navigated, how they influenced without authority
+- Result: the business or customer outcome that followed
 
-Return ONLY a valid JSON object, no markdown fences, no explanation, no preamble.
+Return ONLY a valid JSON object with no markdown, no code fences, no extra text.
 
-Schema:
 {
-  "title": "result-led title under 10 words",
-  "situation": "what was the context, problem, or pressure the PM was operating in",
-  "task": "what they were specifically accountable for in this situation",
-  "action": "the concrete steps they took — what they did, how, with whom",
-  "result": "what changed as a direct result of their actions",
-  "metric": "the single most quotable outcome — number, %, time saved, or clear qualitative win. Empty string if none.",
+  "title": "concise title under 10 words summarising what was achieved",
+  "situation": "1-2 sentences on the business/product context and problem",
+  "task": "1-2 sentences on what the PM was responsible for",
+  "action": "2-3 sentences on the PM's key actions, decisions and how they worked with others",
+  "result": "1-2 sentences on the outcome for the business, product or team",
+  "metric": "the most concrete result — a number, percentage, or clear qualitative win. Use empty string if none.",
   "competencies": ["1-3 from: ${COMPETENCIES.join(", ")}"],
   "domains": ["1-2 from: ${DOMAINS.join(", ")}"],
   "situation_type": "exactly one from: ${SITUATIONS.join(", ")}",
-  "lesson": "the transferable principle — what they learned or would do again in similar situations",
-  "interview_angle": "one line: which interview question or review context this story answers best"
+  "lesson": "1 sentence on the transferable insight from this situation",
+  "interview_angle": "1 sentence on what interview question this story best answers"
 }
 
 Raw note:
@@ -66,7 +63,7 @@ export async function POST(request: Request) {
         model: MODEL,
         messages: [{ role: "user", content: buildPrompt(raw.trim()) }],
         max_tokens: 2048,
-        temperature: 0.3,
+        temperature: 0.4,
       }),
     });
 
