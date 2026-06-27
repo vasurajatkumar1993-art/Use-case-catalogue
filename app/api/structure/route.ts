@@ -6,19 +6,33 @@ export const runtime = "nodejs";
 const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 function buildPrompt(raw: string) {
-  return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
+  return `You are an expert career coach helping a senior product manager document their work as reusable STAR stories for interviews, performance reviews, and portfolio use.
+
+Your job: take a raw, unstructured note and extract ONE polished use case in strict JSON format.
+
+Rules:
+- Write in first person ("I led...", "I identified...", "I partnered with...")
+- Be specific and concrete — use the details from the note, don't invent facts
+- Each STAR field must be 1-2 tight, punchy sentences — no padding
+- The title must lead with the RESULT or IMPACT, not the activity (e.g. "Unblocked Stakeholder Validation by Exposing Prod vs Dev Mismatch" not "Triaged Engineer Concerns")
+- The metric should be the single most quotable number or outcome — use exact figures if present, or a clear qualitative outcome if not
+- lesson and interview_angle should be genuinely insightful — what a senior PM would say in a debrief, not generic platitudes
+
+Return ONLY a valid JSON object, no markdown fences, no explanation, no preamble.
+
+Schema:
 {
- "title": "short result-led title, under 10 words",
- "situation": "the context/problem, 1-2 sentences",
- "task": "what they were responsible for, 1-2 sentences",
- "action": "the key moves they made, 1-2 sentences",
- "result": "the outcome, 1-2 sentences",
- "metric": "the single most quotable quantified result e.g. '+2.5% auth rate', or '' if none",
- "competencies": ["pick 1-3 from: ${COMPETENCIES.join(", ")}"],
- "domains": ["pick 1-2 from: ${DOMAINS.join(", ")}"],
- "situation_type": "pick ONE from: ${SITUATIONS.join(", ")}",
- "lesson": "the transferable insight / what they'd do again or differently, 1-2 sentences",
- "interview_angle": "one line on when to reach for this story in an interview or review"
+  "title": "result-led title under 10 words",
+  "situation": "what was the context, problem, or pressure the PM was operating in",
+  "task": "what they were specifically accountable for in this situation",
+  "action": "the concrete steps they took — what they did, how, with whom",
+  "result": "what changed as a direct result of their actions",
+  "metric": "the single most quotable outcome — number, %, time saved, or clear qualitative win. Empty string if none.",
+  "competencies": ["1-3 from: ${COMPETENCIES.join(", ")}"],
+  "domains": ["1-2 from: ${DOMAINS.join(", ")}"],
+  "situation_type": "exactly one from: ${SITUATIONS.join(", ")}",
+  "lesson": "the transferable principle — what they learned or would do again in similar situations",
+  "interview_angle": "one line: which interview question or review context this story answers best"
 }
 
 Raw note:
@@ -51,7 +65,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: MODEL,
         messages: [{ role: "user", content: buildPrompt(raw.trim()) }],
-        max_tokens: 1024,
+        max_tokens: 2048,
+        temperature: 0.3,
       }),
     });
 
