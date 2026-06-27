@@ -4,7 +4,7 @@ import { COMPETENCIES, DOMAINS, SITUATIONS } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 function buildPrompt(raw: string) {
   return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "Server missing ANTHROPIC_API_KEY" }, { status: 500 });
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ error: "Server missing GEMINI_API_KEY" }, { status: 500 });
   }
 
   const { raw } = await request.json().catch(() => ({ raw: "" }));
@@ -44,19 +44,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        messages: [{ role: "user", content: buildPrompt(raw.trim()) }],
-      }),
-    });
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: buildPrompt(raw.trim()) }] }],
+          generationConfig: { maxOutputTokens: 1024 },
+        }),
+      }
+    );
 
     if (!r.ok) {
       const detail = await r.text();
@@ -64,10 +62,7 @@ export async function POST(request: Request) {
     }
 
     const data = await r.json();
-    const text = (data.content || [])
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("\n");
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
     const start = clean.indexOf("{");
