@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { COMPETENCIES, DOMAINS, SITUATIONS } from "@/lib/types";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-001";
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 function buildPrompt(raw: string) {
   return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
@@ -27,7 +28,6 @@ Raw note:
 }
 
 export async function POST(request: Request) {
-  // Only signed-in users can spend tokens.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -44,26 +44,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildPrompt(raw.trim()) }] }],
-          generationConfig: { maxOutputTokens: 1024 },
-        }),
-      }
-    );
-
-    if (!r.ok) {
-      const detail = await r.text();
-      console.error("Gemini error:", r.status, detail);
-      return NextResponse.json({ error: `Model call failed (${r.status}): ${detail}` }, { status: 502 });
-    }
-
-    const data = await r.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: MODEL });
+    const result = await model.generateContent(buildPrompt(raw.trim()));
+    const text = result.response.text();
 
     const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
     const start = clean.indexOf("{");
