@@ -4,7 +4,7 @@ import { COMPETENCIES, DOMAINS, SITUATIONS } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
 
 function buildPrompt(raw: string) {
   return `You turn a product manager's raw, messy note about something they worked on into one structured, reusable use case. Return ONLY a single JSON object, no markdown, no preamble. Keep each STAR field to 1-2 tight sentences. Schema:
