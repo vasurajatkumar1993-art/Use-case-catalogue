@@ -68,8 +68,9 @@ export async function POST(request: Request) {
       situation_type: obj.situation_type || "",
     });
   } catch (e: any) {
+    console.error("Structure error:", e?.message || e);
     return NextResponse.json(
-      { error: "Could not parse the model response. Try again or add more detail." },
+      { error: `Parse error: ${e?.message || "unknown"}` },
       { status: 502 }
     );
   }
